@@ -165,8 +165,8 @@ async fn send_verification_email(recipient_email: &str, code: &str) {
         .body(email_body)
         .unwrap();
 
-    // SMTP 配置，使用 163 邮箱
-    let creds = Credentials::new("yongqi_hu@163.com".to_string(), "NAedGHTGpeWXJAUG".to_string()); // 替换为您的 163 邮箱地址和授权码
+    // 需要替换下这里
+    let creds = Credentials::new("yongqi_hu@163.com".to_string(), "your_password".to_string());
 
     let mailer = SmtpTransport::relay("smtp.163.com")
         .unwrap()
