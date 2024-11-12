@@ -1,0 +1,8 @@
+# 忽略 target 目录
+target/
+
+# 忽略 Cargo.lock 文件
+Cargo.lock
+
+# 忽略 password_reset.db 文件
+password_reset.db

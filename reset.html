@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Reset</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-image: url('https://images.unsplash.com/5/unsplash-kitsune-4.jpg?ixlib=rb-0.3.5&ixid=eyJhcHBfaWQiOjEyMDd9&s=bc01c83c3da0425e9baa6c7a9204af81');
+            background-size: cover;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            color: #333;
+        }
+        .reset-container {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        input {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007BFF;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .info-message, .error-message, .success-message {
+            text-align: center;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .info-message {
+            color: #007BFF;
+        }
+        .error-message {
+            color: red;
+        }
+        .success-message {
+            color: green;
+        }
+    </style>
+</head>
+<body>
+    <div class="reset-container">
+        <h2>Password Reset</h2>
+        <input type="email" id="email" placeholder="Enter your email" required>
+        <button id="sendCodeButton" onclick="requestVerificationCode()">Send Verification Code</button>
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+        <div id="verificationMessage" class="info-message" style="display: none;">Verification code has been sent to your email.</div>
+        <div id="successMessage" class="success-message" style="display: none;">Password has been reset successfully.</div>
+
+        <input type="text" id="verificationCode" placeholder="Enter verification code" style="display: none;" required>
+        <input type="password" id="newPassword" placeholder="Enter new password" style="display: none;" required>
+        <input type="password" id="confirmPassword" placeholder="Confirm new password" style="display: none;" required>
+        <button id="resetPasswordButton" onclick="verifyAndResetPassword()" style="display: none;">Reset Password</button>
+    </div>
+
+    <script>
+        let timer; 
+        let cooldown = 60;
+
+        // 添加 "Enter" 键事件监听
+        document.addEventListener("keydown", function(event) {
+            if (event.key === "Enter") {
+                const emailField = document.getElementById("email");
+                const verificationCodeField = document.getElementById("verificationCode");
+                const newPasswordField = document.getElementById("newPassword");
+                const confirmPasswordField = document.getElementById("confirmPassword");
+
+                // 检查是否在请求验证码的状态
+                if (emailField && emailField.value && verificationCodeField.style.display === "none") {
+                    requestVerificationCode();
+                }
+                // 检查是否在验证验证码和重置密码的状态
+                else if (
+                    verificationCodeField.style.display !== "none" &&
+                    verificationCodeField.value &&
+                    newPasswordField.value &&
+                    confirmPasswordField.value
+                ) {
+                    verifyAndResetPassword();
+                }
+            }
+        });
+
+        function isValidEmail(email) {
+            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailPattern.test(email);
+        }
+
+        async function requestVerificationCode() {
+            const email = document.getElementById('email').value;
+            const sendCodeButton = document.getElementById('sendCodeButton');
+            const successMessage = document.getElementById('successMessage');
+            const errorMessage = document.getElementById('errorMessage');
+            successMessage.style.display = 'none';
+            errorMessage.style.display = 'none';
+
+            if (!email) {
+                errorMessage.textContent = 'Please enter your email.';
+                errorMessage.style.display = 'block';
+                return;
+            }
+
+            if (!isValidEmail(email)) {
+                errorMessage.textContent = 'Please enter a valid email address.';
+                errorMessage.style.display = 'block';
+                return;
+            }
+
+            try {
+                const response = await fetch('http://127.0.0.1:3030/request_password_reset', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username: email, email: email })
+                });
+
+                if (response.ok) {
+                    document.getElementById('verificationMessage').style.display = 'block';
+                    document.getElementById('verificationCode').style.display = 'block';
+                    document.getElementById('newPassword').style.display = 'block';
+                    document.getElementById('confirmPassword').style.display = 'block';
+                    document.getElementById('resetPasswordButton').style.display = 'block';
+
+                    // 启动倒计时
+                    startCooldown();
+                } else {
+                    errorMessage.textContent = 'Failed to send verification code.';
+                    errorMessage.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                errorMessage.textContent = 'An error occurred. Please try again later.';
+                errorMessage.style.display = 'block';
+            }
+        }
+
+        function startCooldown() {
+            const sendCodeButton = document.getElementById('sendCodeButton');
+            sendCodeButton.disabled = true;
+            let remainingTime = cooldown;
+
+            // 更新按钮文本显示剩余时间
+            sendCodeButton.textContent = `Wait ${remainingTime}s`;
+
+            timer = setInterval(() => {
+                remainingTime -= 1;
+                sendCodeButton.textContent = `Wait ${remainingTime}s`;
+
+                if (remainingTime <= 0) {
+                    clearInterval(timer);
+                    sendCodeButton.disabled = false;
+                    sendCodeButton.textContent = "Send Verification Code";
+                }
+            }, 1000);
+        }
+
+        async function verifyAndResetPassword() {
+            const email = document.getElementById('email').value;
+            const verificationCode = document.getElementById('verificationCode').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const successMessage = document.getElementById('successMessage');
+            const errorMessage = document.getElementById('errorMessage');
+
+            successMessage.style.display = 'none';
+            errorMessage.style.display = 'none';
+
+            if (!verificationCode || !newPassword || !confirmPassword) {
+                errorMessage.textContent = 'Please fill in all fields.';
+                errorMessage.style.display = 'block';
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                errorMessage.textContent = 'Passwords do not match.';
+                errorMessage.style.display = 'block';
+                return;
+            }
+
+            try {
+                const response = await fetch('http://127.0.0.1:3030/verify_code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username: email, code: verificationCode })
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result === "Verification successful. You can now reset your password.") {
+                    successMessage.style.display = 'block';
+                    document.getElementById('verificationMessage').style.display = 'none';
+                    // 隐藏输入框和按钮
+                    document.getElementById('verificationCode').style.display = 'none';
+                    document.getElementById('newPassword').style.display = 'none';
+                    document.getElementById('confirmPassword').style.display = 'none';
+                    document.getElementById('resetPasswordButton').style.display = 'none';
+                } else {
+                    errorMessage.textContent = 'Verification code is incorrect.';
+                    errorMessage.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                errorMessage.textContent = 'An error occurred. Please try again later.';
+                errorMessage.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>
